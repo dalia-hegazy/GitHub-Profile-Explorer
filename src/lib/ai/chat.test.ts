@@ -8,6 +8,7 @@ import { NoAiProviderConfiguredError } from "./provider";
 const mockEnv = vi.hoisted(() => ({
   OPENAI_API_KEY: undefined as string | undefined,
   ANTHROPIC_API_KEY: undefined as string | undefined,
+  GOOGLE_GENERATIVE_AI_API_KEY: undefined as string | undefined,
 }));
 
 const streamTextMock = vi.hoisted(() => vi.fn());
@@ -94,6 +95,7 @@ describe("chat service", () => {
   it("throws when no AI provider is configured", async () => {
     mockEnv.OPENAI_API_KEY = undefined;
     mockEnv.ANTHROPIC_API_KEY = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = undefined;
 
     await expect(
       streamRepoChat({ owner: "octocat", repo: "hello-world", messages: [] }),

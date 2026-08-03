@@ -5,6 +5,7 @@ import { getLanguageModel, getProviderName } from "./provider";
 const mockEnv = vi.hoisted(() => ({
   OPENAI_API_KEY: undefined as string | undefined,
   ANTHROPIC_API_KEY: undefined as string | undefined,
+  GOOGLE_GENERATIVE_AI_API_KEY: undefined as string | undefined,
 }));
 
 vi.mock("@/lib/env", () => ({ env: mockEnv }));
@@ -17,10 +18,15 @@ vi.mock("@ai-sdk/anthropic", () => ({
   anthropic: (model: string) => ({ provider: "anthropic", model }),
 }));
 
+vi.mock("@ai-sdk/google", () => ({
+  google: (model: string) => ({ provider: "google", model }),
+}));
+
 describe("AI provider selection", () => {
   beforeEach(() => {
     mockEnv.OPENAI_API_KEY = undefined;
     mockEnv.ANTHROPIC_API_KEY = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = undefined;
   });
 
   it("returns null when no provider is configured", () => {
@@ -35,6 +41,14 @@ describe("AI provider selection", () => {
     expect(getProviderName()).toBe("openai");
     const model = getLanguageModel();
     expect(model).toMatchObject({ provider: "openai", model: "gpt-4o-mini" });
+  });
+
+  it("uses Google when only the Google key is set", () => {
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = "google-key";
+
+    expect(getProviderName()).toBe("google");
+    const model = getLanguageModel();
+    expect(model).toMatchObject({ provider: "google", model: "gemini-3.6-flash" });
   });
 
   it("falls back to Anthropic when only Anthropic is set", () => {

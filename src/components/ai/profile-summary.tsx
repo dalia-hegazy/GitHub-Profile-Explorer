@@ -59,7 +59,8 @@ export async function ProfileSummary({ username }: ProfileSummaryProps) {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              AI summaries are unavailable. Set <code>OPENAI_API_KEY</code> or{" "}
+              AI summaries are unavailable. Set{" "}
+              <code>OPENAI_API_KEY</code>, <code>GOOGLE_GENERATIVE_AI_API_KEY</code>, or{" "}
               <code>ANTHROPIC_API_KEY</code> to enable them.
             </p>
           </CardContent>

@@ -7,10 +7,15 @@ const envSchema = z.object({
   GITHUB_TOKEN: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
   DATABASE_URL: z.string().url().optional(),
 });
 
-const parsed = envSchema.safeParse(process.env);
+const parsed = envSchema.safeParse(
+  Object.fromEntries(
+    Object.entries(process.env).filter(([, value]) => value !== undefined && value !== ""),
+  ),
+  );
 
 if (!parsed.success) {
   const issues = parsed.error.issues

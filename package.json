@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.27",
+    "@ai-sdk/google": "^4.0.31",
     "@ai-sdk/openai": "^4.0.27",
     "ai": "^7.0.47",
     "class-variance-authority": "^0.7.1",
