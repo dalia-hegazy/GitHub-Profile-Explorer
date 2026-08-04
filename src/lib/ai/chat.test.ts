@@ -9,6 +9,8 @@ const mockEnv = vi.hoisted(() => ({
   OPENAI_API_KEY: undefined as string | undefined,
   ANTHROPIC_API_KEY: undefined as string | undefined,
   GOOGLE_GENERATIVE_AI_API_KEY: undefined as string | undefined,
+  GOOGLE_GENERATIVE_AI_API_KEY_2: undefined as string | undefined,
+  GOOGLE_GENERATIVE_AI_API_KEY_3: undefined as string | undefined,
 }));
 
 const streamTextMock = vi.hoisted(() => vi.fn());
@@ -27,6 +29,12 @@ vi.mock("@ai-sdk/openai", () => ({
 }));
 vi.mock("@ai-sdk/anthropic", () => ({
   anthropic: (model: string) => ({ provider: "anthropic", model }),
+}));
+vi.mock("@ai-sdk/google", () => ({
+  google: (model: string) => ({ provider: "google", model }),
+  createGoogle: () => ({
+    languageModel: (model: string) => ({ provider: "google", model }),
+  }),
 }));
 vi.mock("ai", () => ({ streamText: streamTextMock }));
 vi.mock("@/lib/github", () => ({

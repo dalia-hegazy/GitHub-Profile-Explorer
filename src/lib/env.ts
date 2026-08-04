@@ -8,6 +8,8 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
+  GOOGLE_GENERATIVE_AI_API_KEY_2: z.string().min(1).optional(),
+  GOOGLE_GENERATIVE_AI_API_KEY_3: z.string().min(1).optional(),
   DATABASE_URL: z.string().url().optional(),
 });
 

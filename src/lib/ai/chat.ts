@@ -7,7 +7,7 @@ import { isDbConfigured } from "@/db/client";
 import { getLanguages, getReadme, getRecentCommits, getRepo } from "@/lib/github";
 import type { GithubCommit, GithubRepo, RepoLanguages } from "@/lib/github/types";
 
-import { NoAiProviderConfiguredError, getLanguageModel } from "./provider";
+import { NoAiProviderConfiguredError, getLanguageModels } from "./provider";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -90,7 +90,8 @@ export async function streamRepoChat({
   repo,
   messages,
 }: RepoChatOptions): Promise<Response> {
-  const model = getLanguageModel();
+  const models = getLanguageModels();
+  const model = models[0];
   if (!model) {
     throw new NoAiProviderConfiguredError();
   }

@@ -7,7 +7,9 @@ import { NoAiProviderConfiguredError } from "./provider";
 const mockEnv = vi.hoisted(() => ({
   OPENAI_API_KEY: undefined as string | undefined,
   ANTHROPIC_API_KEY: undefined as string | undefined,
-  GOOGLE_GENERATIVE_AI_API_KEY: undefined as string | undefined,
+  GOOGLE_GENERATIVE_AI_API_KEY: "AQ.test-key" as string | undefined,
+  GOOGLE_GENERATIVE_AI_API_KEY_2: undefined as string | undefined,
+  GOOGLE_GENERATIVE_AI_API_KEY_3: undefined as string | undefined,
 }));
 
 const generateTextMock = vi.hoisted(() => vi.fn());
@@ -20,6 +22,13 @@ vi.mock("@ai-sdk/openai", () => ({
 
 vi.mock("@ai-sdk/anthropic", () => ({
   anthropic: (model: string) => ({ provider: "anthropic", model }),
+}));
+
+vi.mock("@ai-sdk/google", () => ({
+  google: (model: string) => ({ provider: "google", model }),
+  createGoogle: () => ({
+    languageModel: (model: string) => ({ provider: "google", model }),
+  }),
 }));
 
 vi.mock("ai", () => ({
@@ -56,13 +65,15 @@ describe("generateProfileSummary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockEnv.OPENAI_API_KEY = "sk-openai";
+    mockEnv.ANTHROPIC_API_KEY = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_2 = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_3 = undefined;
     generateTextMock.mockResolvedValue({ text: "# Overview\nA summary." });
   });
 
   it("throws when no AI provider is configured", async () => {
     mockEnv.OPENAI_API_KEY = undefined;
-    mockEnv.ANTHROPIC_API_KEY = undefined;
-    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = undefined;
 
     await expect(generateProfileSummary(context)).rejects.toBeInstanceOf(
       NoAiProviderConfiguredError,
@@ -94,5 +105,20 @@ describe("generateProfileSummary", () => {
     generateTextMock.mockRejectedValueOnce(new Error("rate limited"));
 
     await expect(generateProfileSummary(context)).rejects.toBeInstanceOf(ProfileSummaryError);
+  });
+
+  it("falls back to the next model when the primary hits a rate limit", async () => {
+    mockEnv.OPENAI_API_KEY = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = "AQ.first";
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_2 = "AQ.second";
+    generateTextMock
+      .mockRejectedValueOnce({ statusCode: 429, message: "quota exceeded" })
+      .mockResolvedValueOnce({ text: "Fallback summary." });
+
+    await expect(generateProfileSummary(context)).resolves.toBe("Fallback summary.");
+    expect(generateTextMock).toHaveBeenCalledTimes(2);
+    const models = generateTextMock.mock.calls.map(([call]) => call.model);
+    expect(models[0]).toEqual({ provider: "google", model: "gemini-3.6-flash" });
+    expect(models[1]).toEqual({ provider: "google", model: "gemini-3.6-flash" });
   });
 });

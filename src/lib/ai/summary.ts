@@ -4,8 +4,8 @@ import { generateText } from "ai";
 
 import type { GithubRepo, GithubUser } from "@/lib/github/types";
 
-import { NoAiProviderConfiguredError, getLanguageModel } from "./provider";
-import { withRetryOnRateLimit } from "./retry";
+import { NoAiProviderConfiguredError, getLanguageModels } from "./provider";
+import { withModelFallback } from "./retry";
 
 export interface ProfileSummaryContext {
   user: Pick<
@@ -73,19 +73,20 @@ Keep the whole summary under 220 words. Use plain Markdown (no H1).`;
 export async function generateProfileSummary(
   context: ProfileSummaryContext,
 ): Promise<string> {
-  const model = getLanguageModel();
-  if (!model) {
+  const models = getLanguageModels();
+  if (models.length === 0) {
     throw new NoAiProviderConfiguredError();
   }
 
   try {
-    const { text } = await withRetryOnRateLimit(() =>
+    const { text } = await withModelFallback((modelIndex) =>
       generateText({
-        model,
+        model: models[modelIndex],
         system: SYSTEM_PROMPT,
         prompt: `Here is the profile data:\n\n${JSON.stringify(context, null, 2)}\n\nWrite the summary.`,
         temperature: 0.4,
       }),
+      models,
     );
     return text.trim();
   } catch (error) {

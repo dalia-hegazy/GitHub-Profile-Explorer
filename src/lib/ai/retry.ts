@@ -1,34 +1,40 @@
 import "server-only";
 
 /**
- * Retries an async AI call when the provider returns a rate-limit (HTTP 429)
- * error. Keeps transient quota/throughput hits from surfacing to users.
+ * Executes an async AI call across a list of candidate models (e.g. multiple
+ * Gemini keys). On a rate-limit (HTTP 429) error it moves to the next model;
+ * on any other error it rethrows immediately. Non-429 errors, including a
+ * 429 raised by the final model, are the last recorded error.
  *
- * @param fn      The operation to run.
- * @param retries Number of extra attempts after the first call.
- * @param baseMs  Initial backoff delay; doubles after each attempt.
+ * @param fn Takes a model index and returns the operation result.
+ * @param models Number of candidate models available (drives fallback count).
+ * @param baseMs Initial backoff delay; doubles after each failed attempt.
  */
-export async function withRetryOnRateLimit<T>(
-  fn: () => Promise<T>,
-  retries = 2,
-  baseMs = 1000,
+export async function withModelFallback<T>(
+  fn: (modelIndex: number) => Promise<T>,
+  models: unknown[],
+  baseMs = 300,
 ): Promise<T> {
   let lastError: unknown;
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  for (let index = 0; index < Math.max(1, models.length); index++) {
     try {
-      return await fn();
+      return await fn(index);
     } catch (error) {
       lastError = error;
-      if (attempt >= retries || !isRateLimitError(error)) {
+      if (!isRateLimitError(error)) {
         throw error;
       }
-      await sleep(baseMs * 2 ** attempt);
+      // Keep trying the next model if one remains.
+      if (index + 1 >= Math.max(1, models.length)) {
+        break;
+      }
+      await sleep(baseMs);
     }
   }
   throw lastError;
 }
 
-function isRateLimitError(error: unknown): boolean {
+export function isRateLimitError(error: unknown): boolean {
   // @ai-sdk errors carry a numeric status (429) and message.
   if (typeof error === "object" && error !== null) {
     const candidate = error as { statusCode?: unknown; status?: unknown };

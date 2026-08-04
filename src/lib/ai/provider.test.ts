@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getLanguageModel, getProviderName } from "./provider";
+import {
+  getGoogleModels,
+  getLanguageModel,
+  getLanguageModels,
+  getProviderName,
+} from "./provider";
 
 const mockEnv = vi.hoisted(() => ({
   OPENAI_API_KEY: undefined as string | undefined,
   ANTHROPIC_API_KEY: undefined as string | undefined,
   GOOGLE_GENERATIVE_AI_API_KEY: undefined as string | undefined,
+  GOOGLE_GENERATIVE_AI_API_KEY_2: undefined as string | undefined,
+  GOOGLE_GENERATIVE_AI_API_KEY_3: undefined as string | undefined,
 }));
 
 vi.mock("@/lib/env", () => ({ env: mockEnv }));
@@ -20,13 +27,64 @@ vi.mock("@ai-sdk/anthropic", () => ({
 
 vi.mock("@ai-sdk/google", () => ({
   google: (model: string) => ({ provider: "google", model }),
+  createGoogle: () => ({
+    languageModel: (model: string) => ({ provider: "google", model }),
+  }),
 }));
 
-describe("AI provider selection", () => {
+describe("getGoogleModels", () => {
+  beforeEach(() => {
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_2 = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_3 = undefined;
+  });
+
+  it("returns one model per configured key", () => {
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = "k1";
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_3 = "k3";
+
+    const models = getGoogleModels();
+    expect(models).toHaveLength(2);
+    for (const model of models) {
+      expect(model).toMatchObject({ provider: "google", model: "gemini-3.6-flash" });
+    }
+  });
+
+  it("returns an empty array when no Google keys are set", () => {
+    expect(getGoogleModels()).toEqual([]);
+  });
+});
+
+describe("getLanguageModels", () => {
   beforeEach(() => {
     mockEnv.OPENAI_API_KEY = undefined;
     mockEnv.ANTHROPIC_API_KEY = undefined;
     mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_2 = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_3 = undefined;
+  });
+
+  it("returns an empty list when no provider is configured", () => {
+    expect(getLanguageModels()).toEqual([]);
+  });
+
+  it("orders OpenAI first, then Google keys, then Anthropic", () => {
+    mockEnv.OPENAI_API_KEY = "sk-openai";
+    mockEnv.ANTHROPIC_API_KEY = "sk-anthropic";
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_2 = "k2";
+
+    const providers = getLanguageModels().map((m) => (m as { provider: string }).provider);
+    expect(providers).toEqual(["openai", "google", "anthropic"]);
+  });
+});
+
+describe("getLanguageModel (legacy)", () => {
+  beforeEach(() => {
+    mockEnv.OPENAI_API_KEY = undefined;
+    mockEnv.ANTHROPIC_API_KEY = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_2 = undefined;
+    mockEnv.GOOGLE_GENERATIVE_AI_API_KEY_3 = undefined;
   });
 
   it("returns null when no provider is configured", () => {
@@ -34,7 +92,7 @@ describe("AI provider selection", () => {
     expect(getProviderName()).toBeNull();
   });
 
-  it("prefers OpenAI when both keys are set", () => {
+  it("prefers OpenAI when set", () => {
     mockEnv.OPENAI_API_KEY = "sk-openai";
     mockEnv.ANTHROPIC_API_KEY = "sk-anthropic";
 
