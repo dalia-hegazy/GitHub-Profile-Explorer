@@ -1,7 +1,5 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MarkdownContent } from "@/components/markdown-content";
 import { getUser, getUserRepos } from "@/lib/github";
 import type { ProfileSummaryContext } from "@/lib/ai/summary";
 import { ProfileSummaryError, generateProfileSummary } from "@/lib/ai/summary";
@@ -87,9 +85,10 @@ export async function ProfileSummary({ username }: ProfileSummaryProps) {
     <section aria-label="AI summary" className="space-y-3">
       <h2 className="text-xl font-bold tracking-tight">AI summary</h2>
       <Card className="p-6">
-        <div className="prose prose-sm max-w-none dark:prose-invert">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary}</ReactMarkdown>
-        </div>
+        <MarkdownContent
+          content={summary}
+          className="prose prose-sm max-w-none dark:prose-invert"
+        />
       </Card>
     </section>
   );

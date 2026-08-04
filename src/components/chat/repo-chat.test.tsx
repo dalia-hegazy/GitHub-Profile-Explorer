@@ -51,6 +51,43 @@ describe("RepoChat", () => {
     expect(screen.getByText("It is a demo.")).toBeInTheDocument();
   });
 
+  it("renders assistant markdown as formatted content", () => {
+    render(
+      <RepoChat
+        owner="octocat"
+        repo="hello-world"
+        initialMessages={[
+          { role: "assistant", content: "# Title\n\nSome **bold** and a list.\n\n- item" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Title", level: 1 })).toBeInTheDocument();
+    expect(screen.getByText("bold")).toHaveTextContent("bold");
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("shows a typing indicator while the assistant is waiting to reply", async () => {
+    const user = userEvent.setup();
+    let resolveStream!: (value: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      resolveStream = resolve;
+    });
+    fetchMock.mockResolvedValue(pending);
+
+    render(<RepoChat owner="octocat" repo="hello-world" />);
+
+    await user.type(screen.getByLabelText("Ask about this repository"), "hi");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(
+      await screen.findByRole("status", { name: "Assistant is typing" }),
+    ).toBeInTheDocument();
+
+    resolveStream(streamResponse(["done"]));
+    expect(await screen.findByText("done")).toBeInTheDocument();
+  });
+
   it("posts the conversation and renders the streamed reply", async () => {
     const user = userEvent.setup();
     fetchMock.mockResolvedValue(streamResponse(["Stream", "ing", " reply"]));

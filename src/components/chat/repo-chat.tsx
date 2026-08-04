@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MarkdownContent } from "@/components/markdown-content";
 
 export interface RepoChatMessage {
   role: "user" | "assistant";
@@ -21,13 +22,36 @@ function ChatBubble({ message }: { message: RepoChatMessage }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
+        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
           isUser
             ? "bg-primary text-primary-foreground"
             : "bg-muted text-foreground"
         }`}
       >
-        {message.content}
+        {isUser ? (
+          <span className="whitespace-pre-wrap">{message.content}</span>
+        ) : (
+          <MarkdownContent
+            content={message.content}
+            className="prose prose-sm max-w-none dark:prose-invert [&_pre]:whitespace-pre-wrap [&_pre]:break-words"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div
+        role="status"
+        aria-label="Assistant is typing"
+        className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2.5"
+      >
+        <span className="size-1.5 animate-bounce rounded-full bg-foreground/60" />
+        <span className="size-1.5 animate-bounce rounded-full bg-foreground/60 [animation-delay:150ms]" />
+        <span className="size-1.5 animate-bounce rounded-full bg-foreground/60 [animation-delay:300ms]" />
       </div>
     </div>
   );
@@ -127,6 +151,7 @@ export function RepoChat({
             <ChatBubble key={index} message={message} />
           ))
         )}
+        {isStreaming && messages.at(-1)?.role === "user" ? <TypingIndicator /> : null}
         <div ref={bottomRef} />
       </div>
 
@@ -146,7 +171,14 @@ export function RepoChat({
           maxLength={4000}
         />
         <Button type="submit" disabled={isStreaming || input.trim().length === 0}>
-          {isStreaming ? "Streaming…" : "Send"}
+          {isStreaming ? (
+            <span className="flex items-center gap-1.5">
+              <span className="size-1.5 animate-pulse rounded-full bg-current" />
+              Streaming…
+            </span>
+          ) : (
+            "Send"
+          )}
         </Button>
       </form>
     </div>
