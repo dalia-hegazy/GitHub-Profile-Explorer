@@ -5,6 +5,7 @@ import { generateText } from "ai";
 import type { GithubRepo, GithubUser } from "@/lib/github/types";
 
 import { NoAiProviderConfiguredError, getLanguageModel } from "./provider";
+import { withRetryOnRateLimit } from "./retry";
 
 export interface ProfileSummaryContext {
   user: Pick<
@@ -39,6 +40,21 @@ export class ProfileSummaryError extends Error {
     super(message, options);
     this.name = "ProfileSummaryError";
   }
+
+  /** True when the failure was a provider rate limit / quota exhaustion. */
+  get isRateLimited(): boolean {
+    return isRateLimitError(this.cause);
+  }
+}
+
+function isRateLimitError(error: unknown): boolean {
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as { statusCode?: unknown; status?: unknown };
+    if (candidate.statusCode === 429 || candidate.status === 429) return true;
+    const message = (error as { message?: string }).message ?? "";
+    return message.includes("429") && /rate|quota|limit/i.test(message);
+  }
+  return false;
 }
 
 const SYSTEM_PROMPT = `You are an expert GitHub analyst. Given a GitHub user's profile and their top repositories, write a concise, balanced summary in Markdown. Ground every claim in the provided data; do not invent facts. Use these sections:
@@ -63,12 +79,14 @@ export async function generateProfileSummary(
   }
 
   try {
-    const { text } = await generateText({
-      model,
-      system: SYSTEM_PROMPT,
-      prompt: `Here is the profile data:\n\n${JSON.stringify(context, null, 2)}\n\nWrite the summary.`,
-      temperature: 0.4,
-    });
+    const { text } = await withRetryOnRateLimit(() =>
+      generateText({
+        model,
+        system: SYSTEM_PROMPT,
+        prompt: `Here is the profile data:\n\n${JSON.stringify(context, null, 2)}\n\nWrite the summary.`,
+        temperature: 0.4,
+      }),
+    );
     return text.trim();
   } catch (error) {
     throw new ProfileSummaryError("Failed to generate the profile summary.", {

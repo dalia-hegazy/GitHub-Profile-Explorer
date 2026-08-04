@@ -66,11 +66,14 @@ export async function ProfileSummary({ username }: ProfileSummaryProps) {
       );
     }
     if (error instanceof ProfileSummaryError) {
+      const description = error.isRateLimited
+        ? "The AI service is temporarily at its request limit."
+        : "Could not generate a summary right now.";
       return (
         <Card>
           <CardHeader>
             <CardTitle>AI summary</CardTitle>
-            <CardDescription>Could not generate a summary right now.</CardDescription>
+            <CardDescription>{description}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">Please try again later.</p>
